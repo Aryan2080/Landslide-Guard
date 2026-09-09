@@ -2,16 +2,19 @@
 
 ## Current Status
 
-Detection Module — **Stage 1: Data Preparation — COMPLETE** (28/28 checks PASS).
-**Stage 2: U-Net training** — code & notebook shipped; training runs on Kaggle GPU.
+- **Stage 1 — Data preparation:** COMPLETE (28/28 checks PASS).
+- **Stage 2 — Detection model development:** code + 28-section Kaggle notebook shipped, actual training runs on Kaggle GPU.
 
-See:
+Notebooks (numbered by lifecycle stage):
 
-- [notebooks/01_detection_development.ipynb](notebooks/01_detection_development.ipynb) — Stage-1 record.
-- [outputs/detection/data_verification/](outputs/detection/data_verification/) — statistics, figures, PASS/FAIL log.
-- [notebooks/02_detection_kaggle_setup.ipynb](notebooks/02_detection_kaggle_setup.ipynb) — Kaggle env setup + Stage-1 verification.
-- [notebooks/03_detection_training_kaggle.ipynb](notebooks/03_detection_training_kaggle.ipynb) — **Stage 2 U-Net training** (from-scratch U-Net, BCE+Dice loss, AdamW + cosine LR, AMP, best-val-IoU checkpoint, one-shot test evaluation).
+- [notebooks/00_kaggle_setup.ipynb](notebooks/00_kaggle_setup.ipynb) — Kaggle env + Stage-1 verification (**no training**). Run this first on Kaggle.
+- [notebooks/01_detection_development.ipynb](notebooks/01_detection_development.ipynb) — Stage-1 data-preparation record (30 sections, executed).
+- [notebooks/02_detection_model_development.ipynb](notebooks/02_detection_model_development.ipynb) — **Stage-2 model development** (28 sections): U-Net baseline, class-imbalance loss experiments, controlled HP sweep, threshold optimization, one-shot test evaluation, error analysis, model export + inference verification.
+
+Docs / artifacts:
+
 - [docs/kaggle_setup.md](docs/kaggle_setup.md) — step-by-step Kaggle instructions.
+- [outputs/detection/data_verification/](outputs/detection/data_verification/) — Stage-1 statistics, figures, and PASS/FAIL log (committed).
 
 ## Project Objective
 
@@ -39,19 +42,21 @@ LandslideGuard/
 │   └── processed/detection/         Reserved for preprocessed arrays / stats / caches.
 │
 ├── notebooks/
+│   ├── 00_kaggle_setup.ipynb              Kaggle env + Stage-1 verification (no training).
 │   ├── 01_detection_development.ipynb     Stage 1 - data preparation (executed).
-│   ├── 02_detection_kaggle_setup.ipynb    Kaggle env + Stage-1 verification (no training).
-│   └── 03_detection_training_kaggle.ipynb Stage 2 - U-Net training on Kaggle GPU.
+│   └── 02_detection_model_development.ipynb  Stage 2 - full model development (28 sections).
 │
 ├── src/detection/
 │   ├── preprocessing.py             HDF5 loading + per-channel z-score normalization.
 │   ├── dataset.py                   PyTorch Dataset + DataLoader + train-only augmentation.
-│   ├── models.py                    U-Net (14 in / 1 out, ~7.77M params @ base_features=32).
-│   ├── losses.py                    BCEWithLogits + soft Dice (configurable weights).
-│   ├── metrics.py                   Binary IoU/F1/precision/recall with exact accumulation.
-│   ├── train.py                     Trainer + fit() + evaluate() + set_seed().
-│   ├── inference.py                 Trained-model inference pipeline (planned).
-│   ├── postprocessing.py            Thresholding / cleanup (planned).
+│   ├── model.py                     U-Net (14 in / 1 out, ~7.77M params @ base_features=32).
+│   ├── losses.py                    BCE / Dice / BCE+Dice / Focal / Focal+Dice (+ build_loss).
+│   ├── metrics.py                   Exact Dice/IoU/P/R/F1/specificity/accuracy + PR-AUC + threshold sweep.
+│   ├── train.py                     Trainer + fit() + evaluate() with best-val checkpointing.
+│   ├── validate.py                  compute_metrics() / sweep_threshold() over a DataLoader.
+│   ├── utils.py                     Seeding, device summary, ExperimentTracker CSV, EarlyStopping.
+│   ├── postprocessing.py            Thresholding, small-component removal, hole fill, boundary extraction.
+│   ├── inference.py                 DetectionInference bundle (checkpoint + stats + threshold).
 │   └── geospatial.py                Mask -> polygon / GeoJSON export (planned).
 │
 ├── models/detection/                Trained checkpoints (Stage 2; .gitignored).
@@ -163,11 +168,17 @@ Short version:
 1. Kaggle → **Create → New Notebook**.
 2. Right sidebar → **Accelerator = GPU T4 x2** (or any GPU).
 3. Right sidebar → **Add Input → Datasets → search "Landslide4Sense"** and attach the community dataset.
-4. Open `notebooks/02_detection_kaggle_setup.ipynb` (upload it from this repo).
-5. In the notebook, set:
-   - `GITHUB_REPO = "https://github.com/<owner>/<repo>.git"`
-   - `DATA_ROOT   = "/kaggle/input/<the-dataset-slug>"` (adjust to the exact path where `TrainData`, `ValidData`, `TestData` live).
-6. **Run All.** The last cell prints a PASS/FAIL table; only proceed to Stage 2 when it prints `KAGGLE ENVIRONMENT READY`.
+4. **First run** [notebooks/00_kaggle_setup.ipynb](notebooks/00_kaggle_setup.ipynb) — set `GITHUB_REPO = "https://github.com/Aryan2080/Landslide-Guard.git"` and `DATA_ROOT = "/kaggle/input/<slug>"`, Run All, wait for `KAGGLE ENVIRONMENT READY`.
+5. **Then run** [notebooks/02_detection_model_development.ipynb](notebooks/02_detection_model_development.ipynb) — the 28-section Stage-2 notebook. Same two config values in Section 01. Runtime → Run All.
+6. Training artifacts land under `/kaggle/working/`:
+   - `checkpoints/detection/best_model.pth` — locked best model
+   - `checkpoints/detection/final_model_config.yaml` — model + threshold + channels
+   - `outputs/detection/training/` — model summary, loss/metric curves, history CSV
+   - `outputs/detection/experiments/experiment_results.csv` — every experiment row
+   - `outputs/detection/test/test_metrics.json` — one-shot test metrics
+   - `outputs/detection/predictions/` — 6 test prediction figures
+   - `outputs/detection/error_analysis/` — good / partial / hard test examples
+   - `outputs/detection/validation/` — validation-side plots
 
 **Roles:** GitHub carries the *code*, Kaggle Dataset carries the *raw HDF5 files*, Kaggle GPU runs *training* (Stage 2), and future training outputs live in `/kaggle/working/` inside the notebook.
 

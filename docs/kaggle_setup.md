@@ -50,7 +50,7 @@ Two options — the notebook supports both:
   LOCAL_REPO_PATH = "/kaggle/input/<your-code-dataset>/LandslideGuard"
   ```
 
-### 5. Upload and open `02_detection_kaggle_setup.ipynb`
+### 5. Upload and open `00_kaggle_setup.ipynb`
 
 - In the Kaggle notebook editor, use **File → Upload notebook** and pick this file from the repo, or copy-paste the cells into a fresh notebook.
 
@@ -91,7 +91,7 @@ At the end of Section 11 the notebook has:
 
 ### 9. Next: Stage-2 training notebook
 
-Create a separate notebook, e.g. `notebooks/03_detection_training_kaggle.ipynb`, that reuses the code cloned by `02_detection_kaggle_setup.ipynb`:
+Create a separate notebook, e.g. `notebooks/03_detection_training_kaggle.ipynb`, that reuses the code cloned by `00_kaggle_setup.ipynb`:
 
 ```
 GitHub code  +  Kaggle dataset  +  Stage-1 preprocessing

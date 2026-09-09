@@ -1,38 +1,31 @@
 """Training and validation loops for the Landslide Detection U-Net.
 
-Kept intentionally small so the notebook stays thin. The functions do not
-depend on the notebook; they can be called from any Python entry point.
+Kept small so the notebook stays thin. Functions do not depend on the
+notebook and can be called from any Python entry point.
 
-Design notes:
+Design:
     - Trainer holds model / optimizer / scheduler / loss / device / AMP scaler.
-    - `train_one_epoch` steps LR every epoch (cosine schedules expect that).
-    - `validate` returns a metrics dict computed exactly (accumulated
-      confusion counts, not a batch-average of ratios).
-    - Best checkpoint selection is by validation IoU by default.
+    - `train_one_epoch` returns the mean train loss.
+    - `validate` uses `src.detection.validate.compute_metrics` for exact
+      threshold metrics + PR-AUC.
+    - `fit` writes a JSON history each epoch and saves the best-val
+      checkpoint. Optional early stopping.
 """
 from __future__ import annotations
 
 import json
-import random
 import time
 from dataclasses import dataclass, field
 from pathlib import Path
-from typing import Any, Iterable, Optional
+from typing import Any, Callable, Optional
 
 import numpy as np
 import torch
 from torch import nn
 from torch.utils.data import DataLoader
 
-from .metrics import BinaryMetricAccumulator
-
-
-def set_seed(seed: int) -> None:
-    random.seed(seed)
-    np.random.seed(seed)
-    torch.manual_seed(seed)
-    if torch.cuda.is_available():
-        torch.cuda.manual_seed_all(seed)
+from .metrics import BinaryMetricAccumulator, PRAUCAccumulator
+from .utils import EarlyStopping, set_seed  # re-export
 
 
 @dataclass
@@ -41,17 +34,22 @@ class EpochStats:
     lr: float
     train_loss: float
     val_loss: float
+    val_dice: float
     val_iou: float
-    val_f1: float
     val_precision: float
     val_recall: float
+    val_f1: float
+    val_specificity: float
+    val_accuracy: float
+    val_pr_auc: float
     seconds: float
 
     def as_dict(self) -> dict[str, Any]:
         return {k: getattr(self, k) for k in
                 ("epoch", "lr", "train_loss", "val_loss",
-                 "val_iou", "val_f1", "val_precision", "val_recall",
-                 "seconds")}
+                 "val_dice", "val_iou", "val_precision", "val_recall",
+                 "val_f1", "val_specificity", "val_accuracy",
+                 "val_pr_auc", "seconds")}
 
 
 class Trainer:
@@ -87,6 +85,8 @@ class Trainer:
             with torch.amp.autocast(device_type="cuda", enabled=self.use_amp):
                 logits = self.model(xb)
                 loss = self.loss_fn(logits, yb)
+            if not torch.isfinite(loss):
+                raise FloatingPointError(f"non-finite training loss: {loss.item()}")
             self.scaler.scale(loss).backward()
             if self.grad_clip is not None:
                 self.scaler.unscale_(self.optimizer)
@@ -99,9 +99,11 @@ class Trainer:
         return running / max(n, 1)
 
     @torch.no_grad()
-    def validate(self, loader: DataLoader) -> tuple[float, dict[str, float]]:
+    def validate(self, loader: DataLoader,
+                 with_pr_auc: bool = True) -> tuple[float, dict[str, float]]:
         self.model.eval()
         acc = BinaryMetricAccumulator(threshold=self.threshold)
+        pr = PRAUCAccumulator() if with_pr_auc else None
         running = 0.0
         n = 0
         for xb, yb in loader:
@@ -113,7 +115,12 @@ class Trainer:
             running += float(loss.item()) * xb.size(0)
             n += xb.size(0)
             acc.update(logits.float(), yb)
-        return running / max(n, 1), acc.compute()
+            if pr is not None:
+                pr.update(logits.float(), yb)
+        metrics = acc.compute()
+        if pr is not None:
+            metrics["pr_auc"] = pr.compute()
+        return running / max(n, 1), metrics
 
 
 @dataclass
@@ -134,13 +141,23 @@ def fit(trainer: Trainer,
         epochs: int,
         checkpoint_path: str | Path,
         history_path: str | Path | None = None,
-        log_fn=print,
-        select_by: str = "val_iou") -> RunHistory:
+        log_fn: Callable[[str], None] = print,
+        select_by: str = "val_dice",
+        early_stopping: EarlyStopping | None = None,
+        extra_state: dict | None = None,
+        ) -> RunHistory:
     """Train `epochs` epochs, keep best-val checkpoint, return history.
 
-    The best checkpoint is a plain torch.save({'model': state_dict, ...}).
+    The best checkpoint is a plain torch.save(state_dict + metadata).
     """
-    assert select_by in {"val_iou", "val_f1", "val_loss"}
+    valid = {"val_loss", "val_dice", "val_iou", "val_f1", "val_pr_auc"}
+    assert select_by in valid, f"select_by must be one of {valid}"
+    metric_key = {"val_loss": None,
+                  "val_dice": "dice",
+                  "val_iou":  "iou",
+                  "val_f1":   "f1",
+                  "val_pr_auc": "pr_auc"}[select_by]
+
     hist = RunHistory()
     best = -float("inf") if select_by != "val_loss" else float("inf")
 
@@ -155,53 +172,76 @@ def fit(trainer: Trainer,
         stats = EpochStats(
             epoch=ep, lr=lr,
             train_loss=train_loss, val_loss=val_loss,
-            val_iou=val_metrics["iou"], val_f1=val_metrics["f1"],
+            val_dice=val_metrics["dice"],
+            val_iou=val_metrics["iou"],
             val_precision=val_metrics["precision"],
             val_recall=val_metrics["recall"],
+            val_f1=val_metrics["f1"],
+            val_specificity=val_metrics["specificity"],
+            val_accuracy=val_metrics["accuracy"],
+            val_pr_auc=float(val_metrics.get("pr_auc", 0.0)),
             seconds=time.time() - t0)
         hist.append(stats)
 
-        selected = -val_loss if select_by == "val_loss" else val_metrics[
-            {"val_iou": "iou", "val_f1": "f1"}[select_by]]
+        selected = -val_loss if select_by == "val_loss" else val_metrics[metric_key]
         improved = selected > best
         if improved:
             best = selected
-            torch.save(
-                {
-                    "model": trainer.model.state_dict(),
-                    "epoch": ep,
-                    "val_metrics": val_metrics,
-                    "select_by": select_by,
-                },
-                str(checkpoint_path),
-            )
+            payload = {
+                "model": trainer.model.state_dict(),
+                "optimizer": trainer.optimizer.state_dict(),
+                "scheduler": (trainer.scheduler.state_dict()
+                              if trainer.scheduler is not None else None),
+                "epoch": ep,
+                "val_metrics": val_metrics,
+                "val_loss": val_loss,
+                "select_by": select_by,
+            }
+            if extra_state:
+                payload.update(extra_state)
+            torch.save(payload, str(checkpoint_path))
 
         log_fn(
             f"epoch {ep:03d}/{epochs:03d}  "
-            f"lr={lr:.2e}  train_loss={train_loss:.4f}  "
-            f"val_loss={val_loss:.4f}  val_iou={val_metrics['iou']:.4f}  "
-            f"val_f1={val_metrics['f1']:.4f}  "
+            f"lr={lr:.2e}  train={train_loss:.4f}  "
+            f"val_loss={val_loss:.4f}  "
+            f"dice={val_metrics['dice']:.4f}  iou={val_metrics['iou']:.4f}  "
             f"P={val_metrics['precision']:.4f} R={val_metrics['recall']:.4f}  "
+            f"pr_auc={val_metrics.get('pr_auc', 0.0):.4f}  "
             f"({stats.seconds:.1f}s){'  <- best' if improved else ''}"
         )
         if history_path is not None:
             hist.save_json(history_path)
+
+        if early_stopping is not None:
+            early_stopping.step(selected if select_by != "val_loss" else -selected)
+            if early_stopping.should_stop:
+                log_fn(f"early stopping at epoch {ep}: no improvement "
+                       f"for {early_stopping.patience} epochs")
+                break
 
     return hist
 
 
 @torch.no_grad()
 def evaluate(model: nn.Module, loader: DataLoader, device: torch.device,
-             threshold: float = 0.5) -> dict[str, float]:
-    """One-pass exact metrics over a DataLoader (used for the test set)."""
+             threshold: float = 0.5, with_pr_auc: bool = True
+             ) -> dict[str, float]:
+    """One-pass exact metrics over a DataLoader (test set)."""
     model.eval()
     acc = BinaryMetricAccumulator(threshold=threshold)
+    pr = PRAUCAccumulator() if with_pr_auc else None
     for xb, yb in loader:
         xb = xb.to(device, non_blocking=True)
         yb = yb.to(device, non_blocking=True)
         logits = model(xb)
         acc.update(logits.float(), yb)
-    return acc.compute()
+        if pr is not None:
+            pr.update(logits.float(), yb)
+    out = acc.compute()
+    if pr is not None:
+        out["pr_auc"] = pr.compute()
+    return out
 
 
 __all__ = [
