@@ -48,11 +48,15 @@ def _autodetect_data_root() -> Path:
         candidates = [Path(from_env)]
     else:
         candidates = []
-    # Common paths for the aryanbanda upload
+    # Common paths for the aryanbanda upload (Kaggle mounts either directly
+    # under /kaggle/input/<slug>/ or with a datasets/<user>/<slug>/ prefix
+    # depending on how the dataset was created).
     candidates += [
         Path("/kaggle/input/landslide4sense-full"),
         Path("/kaggle/input/landslide4sense-full/landslide4sense"),
         Path("/kaggle/input/landslide4sense-full/Landslide4Sense"),
+        Path("/kaggle/input/datasets/aryanbanda/landslide4sense-full"),
+        Path("/kaggle/input/datasets/aryanbanda/landslide4sense-full/landslide4sense"),
     ]
     for p in candidates:
         if not p.is_dir():
