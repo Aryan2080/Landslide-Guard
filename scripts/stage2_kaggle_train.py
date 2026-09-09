@@ -14,6 +14,7 @@ All artifacts written under /kaggle/working/ (checkpoints/, outputs/).
 from __future__ import annotations
 
 import json
+import os
 import sys
 import time
 from datetime import datetime
@@ -23,9 +24,13 @@ import numpy as np
 import pandas as pd
 import torch
 
-REPO_DIR = Path("/kaggle/working/Landslide-Guard")
-DATA_ROOT = Path("/kaggle/input/datasets/tekbahadurkshetri/landslide4sense")
-WORK = Path("/kaggle/working")
+REPO_DIR = Path(os.environ.get("LANDSLIDE_REPO_DIR", "/kaggle/working/Landslide-Guard"))
+# Default DATA_ROOT is Aryan's own upload (has masks for all three splits).
+# Override with LANDSLIDE_DATA_ROOT env var when using a different dataset.
+DATA_ROOT = Path(os.environ.get(
+    "LANDSLIDE_DATA_ROOT",
+    "/kaggle/input/landslide4sense-full/landslide4sense"))
+WORK = Path(os.environ.get("LANDSLIDE_WORK_DIR", "/kaggle/working"))
 CKPT_ROOT = WORK / "checkpoints"
 OUT_ROOT = WORK / "outputs" / "detection"
 
@@ -64,10 +69,22 @@ def log(msg: str) -> None:
 
 
 def resolve(split: str) -> tuple[Path, Path]:
-    img = DATA_ROOT / split / "img"
-    mask = DATA_ROOT / split / "mask"
-    assert img.is_dir() and mask.is_dir(), f"missing {img} / {mask}"
-    return img, mask
+    """Find the img/ + mask/ subdirectories for a split.
+
+    Handles both flat layout  <root>/<split>/{img,mask}
+    and archive-nested layout <root>/<split>/<split>/{img,mask}.
+    """
+    candidates = [
+        (DATA_ROOT / split / "img",         DATA_ROOT / split / "mask"),
+        (DATA_ROOT / split / split / "img", DATA_ROOT / split / split / "mask"),
+    ]
+    for img, mask in candidates:
+        if img.is_dir() and mask.is_dir():
+            return img, mask
+    raise FileNotFoundError(
+        f"Could not resolve {split}. Checked: "
+        + ", ".join(str(i) + " / " + str(m) for i, m in candidates)
+    )
 
 
 def make_loaders(stats):
@@ -137,7 +154,12 @@ def main():
     assert torch.cuda.is_available(), "CUDA required"
     device = torch.device("cuda")
     log(f"device: {device_summary(device)}")
-    log(f"config: {json.dumps(CFG)}")
+    log(f"REPO_DIR : {REPO_DIR}")
+    log(f"DATA_ROOT: {DATA_ROOT}")
+    log(f"WORK     : {WORK}")
+    log(f"config   : {json.dumps(CFG)}")
+    assert DATA_ROOT.is_dir(), \
+        f"DATA_ROOT does not exist: {DATA_ROOT}. Set LANDSLIDE_DATA_ROOT."
 
     CKPT_ROOT.mkdir(parents=True, exist_ok=True)
     (OUT_ROOT / "experiments").mkdir(parents=True, exist_ok=True)
