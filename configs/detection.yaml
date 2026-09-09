@@ -75,26 +75,35 @@ pipeline:
   image_dtype: float32
   mask_dtype:  float32                  # 0.0 / 1.0 for BCEWithLogitsLoss
 
-# ------- placeholders for future stages (NOT verified in Stage 1) -------
+# ------- Stage 2 (U-Net training on Kaggle GPU) -------
 model:
-  # name: unet
-  # in_channels: 14
-  # out_channels: 1
-  # base_features:
+  name: unet
+  in_channels: 14
+  out_channels: 1
+  base_features: 32          # ~7.77M params at 32; 16 -> ~1.94M, 64 -> ~31M
 
 training:
-  # epochs:
-  # batch_size:
-  # optimizer:
-  # learning_rate:
-  # weight_decay:
-  # loss:            # e.g. bce_dice
-  # device:
-  # seed:
+  epochs: 40
+  batch_size: 16             # T4 x2: 16 fits at fp16 with base_features=32
+  optimizer: adamw
+  learning_rate: 1.0e-3
+  weight_decay: 1.0e-4
+  scheduler: cosine          # torch.optim.lr_scheduler.CosineAnnealingLR
+  loss:
+    name: bce_dice
+    bce_weight: 0.5
+    dice_weight: 0.5
+    dice_eps: 1.0
+  amp: true                  # torch.amp.autocast + GradScaler on CUDA
+  grad_clip: 1.0
+  seed: 42
+  num_workers: 2
+  pin_memory: true
+  select_by: val_iou         # best checkpoint chosen by validation IoU
 
 inference:
-  # checkpoint:
-  # threshold:
+  threshold: 0.5             # applied to sigmoid(logits) for binary mask
+  # checkpoint: /kaggle/working/best_model.pth
 
 output:
   data_verification_dir: outputs/detection/data_verification

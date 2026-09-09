@@ -3,13 +3,14 @@
 ## Current Status
 
 Detection Module — **Stage 1: Data Preparation — COMPLETE** (28/28 checks PASS).
-Next: **Stage 2 — U-Net training on Kaggle GPU** (not started).
+**Stage 2: U-Net training** — code & notebook shipped; training runs on Kaggle GPU.
 
 See:
 
-- [notebooks/01_detection_development.ipynb](notebooks/01_detection_development.ipynb) — authoritative Stage-1 record.
-- [outputs/detection/data_verification/](outputs/detection/data_verification/) — persisted statistics, figures, and PASS/FAIL log.
-- [notebooks/02_detection_kaggle_setup.ipynb](notebooks/02_detection_kaggle_setup.ipynb) — Kaggle environment setup + Stage-1 verification.
+- [notebooks/01_detection_development.ipynb](notebooks/01_detection_development.ipynb) — Stage-1 record.
+- [outputs/detection/data_verification/](outputs/detection/data_verification/) — statistics, figures, PASS/FAIL log.
+- [notebooks/02_detection_kaggle_setup.ipynb](notebooks/02_detection_kaggle_setup.ipynb) — Kaggle env setup + Stage-1 verification.
+- [notebooks/03_detection_training_kaggle.ipynb](notebooks/03_detection_training_kaggle.ipynb) — **Stage 2 U-Net training** (from-scratch U-Net, BCE+Dice loss, AdamW + cosine LR, AMP, best-val-IoU checkpoint, one-shot test evaluation).
 - [docs/kaggle_setup.md](docs/kaggle_setup.md) — step-by-step Kaggle instructions.
 
 ## Project Objective
@@ -38,14 +39,17 @@ LandslideGuard/
 │   └── processed/detection/         Reserved for preprocessed arrays / stats / caches.
 │
 ├── notebooks/
-│   ├── 01_detection_development.ipynb    Stage 1 - data preparation (executed).
-│   └── 02_detection_kaggle_setup.ipynb   Kaggle env + Stage-1 verification (no training).
+│   ├── 01_detection_development.ipynb     Stage 1 - data preparation (executed).
+│   ├── 02_detection_kaggle_setup.ipynb    Kaggle env + Stage-1 verification (no training).
+│   └── 03_detection_training_kaggle.ipynb Stage 2 - U-Net training on Kaggle GPU.
 │
 ├── src/detection/
 │   ├── preprocessing.py             HDF5 loading + per-channel z-score normalization.
 │   ├── dataset.py                   PyTorch Dataset + DataLoader + train-only augmentation.
-│   ├── models.py                    Segmentation architectures (U-Net planned - Stage 2).
-│   ├── losses.py                    Segmentation losses (planned - Stage 2).
+│   ├── models.py                    U-Net (14 in / 1 out, ~7.77M params @ base_features=32).
+│   ├── losses.py                    BCEWithLogits + soft Dice (configurable weights).
+│   ├── metrics.py                   Binary IoU/F1/precision/recall with exact accumulation.
+│   ├── train.py                     Trainer + fit() + evaluate() + set_seed().
 │   ├── inference.py                 Trained-model inference pipeline (planned).
 │   ├── postprocessing.py            Thresholding / cleanup (planned).
 │   └── geospatial.py                Mask -> polygon / GeoJSON export (planned).
