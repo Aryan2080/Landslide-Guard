@@ -1,13 +1,17 @@
-"""Inference pipeline for the trained Landslide Detection U-Net.
+"""Inference pipeline for the trained Landslide Detection model.
+
+Supports both V1 (`model.UNet`) and V2 (`model_v2.UNetV2`) checkpoints. The
+V2 checkpoint carries an `arch` dict specifying `base_features`, `norm`,
+`residual`, etc. When present the V2 architecture is instantiated;
+otherwise the V1 architecture is used.
 
 Flow:
-
     raw HDF5 image -> preprocessing.preprocess_pair -> model forward
         -> sigmoid -> LOCKED threshold -> postprocessing -> binary mask
 
-Nothing here reads any part of a validation or test file to configure
-itself; the normalization statistics and threshold both come from the
-locked artifacts written during Stage 2 (validation-derived).
+Nothing here reads validation/test data to configure itself. Normalization
+statistics come from the Stage-1 file (train-only), and the threshold from
+the Phase-12 locked config.
 """
 from __future__ import annotations
 
@@ -20,23 +24,45 @@ import numpy as np
 import torch
 
 from .model import UNet
-from .postprocessing import (
-    PostprocessingConfig, apply as apply_postprocessing,
-)
+from .model_v2 import UNetV2, UNetV2Config
+from .postprocess import PostprocessingConfig, apply as apply_postprocessing
 from .preprocessing import (
     NormalizationStats, normalize, read_image, sanitize,
 )
 
 
+def _build_model(arch: dict) -> torch.nn.Module:
+    """Instantiate V1 or V2 U-Net from an `arch` dict."""
+    kind = arch.get("kind", "v1")
+    if kind == "v2":
+        cfg = UNetV2Config(
+            in_channels=int(arch.get("in_channels", 14)),
+            out_channels=int(arch.get("out_channels", 1)),
+            base_features=int(arch.get("base_features", 32)),
+            norm=arch.get("norm", "batchnorm"),
+            residual=bool(arch.get("residual", False)),
+            bottleneck_dropout=float(arch.get("bottleneck_dropout", 0.0)),
+        )
+        return UNetV2(**cfg.as_dict())
+    if kind == "v1":
+        return UNet(
+            in_channels=int(arch.get("in_channels", 14)),
+            out_channels=int(arch.get("out_channels", 1)),
+            base_features=int(arch.get("base_features", 32)),
+        )
+    raise ValueError(f"unknown architecture kind: {kind!r}")
+
+
 @dataclass
 class DetectionInference:
-    """Loadable inference bundle: model + normalization + threshold."""
+    """Loadable inference bundle: model + normalization + threshold + postproc."""
 
     model: torch.nn.Module
     stats: NormalizationStats
     threshold: float
     device: torch.device
     postproc: PostprocessingConfig | None = None
+    metadata: dict[str, Any] | None = None
 
     @classmethod
     def from_files(cls,
@@ -44,23 +70,36 @@ class DetectionInference:
                    normalization_path: str | Path,
                    threshold: float,
                    device: torch.device | str = "cpu",
-                   in_channels: int = 14,
-                   out_channels: int = 1,
-                   base_features: int = 32,
-                   postproc: PostprocessingConfig | None = None
+                   arch: dict | None = None,
+                   postproc: PostprocessingConfig | None = None,
                    ) -> "DetectionInference":
+        """Load a bundle for inference.
+
+        `arch` is a dict describing the architecture. If omitted, we look for
+        `arch` inside the checkpoint payload; if still missing, we fall back
+        to V1 U-Net (base_features=32).
+        """
         device = torch.device(device)
-        model = UNet(in_channels=in_channels, out_channels=out_channels,
-                     base_features=base_features)
         payload = torch.load(str(checkpoint_path), map_location=device,
                              weights_only=False)
-        state = payload["model"] if isinstance(payload, dict) and "model" in payload else payload
+        if arch is None:
+            arch = payload.get("arch") if isinstance(payload, dict) else None
+        if arch is None:
+            arch = {"kind": "v1", "in_channels": 14, "out_channels": 1,
+                    "base_features": 32}
+        model = _build_model(arch)
+        state = (payload["model"] if isinstance(payload, dict) and "model" in payload
+                 else payload)
         model.load_state_dict(state)
         model.to(device).eval()
         stats = NormalizationStats.from_json(normalization_path)
         return cls(model=model, stats=stats, threshold=float(threshold),
                    device=device,
-                   postproc=postproc or PostprocessingConfig(threshold=float(threshold)))
+                   postproc=(postproc
+                             or PostprocessingConfig(threshold=float(threshold))),
+                   metadata={"arch": arch,
+                             "checkpoint": str(checkpoint_path),
+                             "normalization": str(normalization_path)})
 
     @torch.no_grad()
     def infer_array(self, image_hwc: np.ndarray
@@ -79,8 +118,7 @@ class DetectionInference:
     @torch.no_grad()
     def infer_file(self, image_h5_path: str | Path
                    ) -> tuple[np.ndarray, np.ndarray]:
-        """Convenience: read one HDF5 image and run inference."""
-        img = read_image(image_h5_path)  # (H, W, 14) float32
+        img = read_image(image_h5_path)
         return self.infer_array(img)
 
 
