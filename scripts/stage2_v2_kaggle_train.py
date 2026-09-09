@@ -30,9 +30,61 @@ import torch
 # ---- paths (overrideable) -------------------------------------------------
 REPO_DIR = Path(os.environ.get("LANDSLIDE_REPO_DIR",
                                "/kaggle/working/Landslide-Guard"))
-DATA_ROOT = Path(os.environ.get(
-    "LANDSLIDE_DATA_ROOT",
-    "/kaggle/input/landslide4sense-full/landslide4sense"))
+
+
+def _autodetect_data_root() -> Path:
+    """Auto-detect the Landslide4Sense dataset root.
+
+    Tries in order:
+      1. `$LANDSLIDE_DATA_ROOT` (must contain TrainData/{img,mask}).
+      2. `/kaggle/input/landslide4sense-full` and variants.
+      3. Any /kaggle/input/*/ dir that contains TrainData/{img,mask}.
+
+    Handles both the flat (Split/{img,mask}) and archive-nested
+    (Split/Split/{img,mask}) layouts.
+    """
+    from_env = os.environ.get("LANDSLIDE_DATA_ROOT")
+    if from_env:
+        candidates = [Path(from_env)]
+    else:
+        candidates = []
+    # Common paths for the aryanbanda upload
+    candidates += [
+        Path("/kaggle/input/landslide4sense-full"),
+        Path("/kaggle/input/landslide4sense-full/landslide4sense"),
+        Path("/kaggle/input/landslide4sense-full/Landslide4Sense"),
+    ]
+    for p in candidates:
+        if not p.is_dir():
+            continue
+        for sub in ("TrainData/img", "TrainData/TrainData/img"):
+            if (p / sub).is_dir() and (p / sub.replace("img", "mask")).is_dir():
+                return p
+    # Final fallback: sweep /kaggle/input/*
+    root = Path("/kaggle/input")
+    if root.is_dir():
+        for name in os.listdir(root):
+            p = root / name
+            if not p.is_dir():
+                continue
+            for sub in ("TrainData/img", "TrainData/TrainData/img"):
+                if (p / sub).is_dir() and (p / sub.replace("img", "mask")).is_dir():
+                    return p
+            # one level deeper
+            for inner in os.listdir(p):
+                q = p / inner
+                if not q.is_dir():
+                    continue
+                for sub in ("TrainData/img", "TrainData/TrainData/img"):
+                    if (q / sub).is_dir() and (q / sub.replace("img", "mask")).is_dir():
+                        return q
+    raise FileNotFoundError(
+        f"Could not auto-detect DATA_ROOT (Landslide4Sense with masks). "
+        f"Tried env LANDSLIDE_DATA_ROOT={from_env!r} + common paths. "
+        f"Attach a dataset that provides TrainData/{{img,mask}}.")
+
+
+DATA_ROOT = _autodetect_data_root()
 WORK = Path(os.environ.get("LANDSLIDE_WORK_DIR", "/kaggle/working"))
 sys.path.insert(0, str(REPO_DIR))
 
