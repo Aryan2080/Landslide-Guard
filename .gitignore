@@ -1,0 +1,97 @@
+# =====================================================================
+# LandslideGuard - .gitignore
+# GitHub carries CODE and small reproducibility artifacts.
+# Datasets, checkpoints, and generated bulk outputs stay local / on Kaggle.
+# =====================================================================
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+*.egg
+*.egg-info/
+build/
+dist/
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+htmlcov/
+
+# --- Virtual environments ---
+.venv/
+venv/
+env/
+ENV/
+.python-version
+
+# --- Jupyter ---
+.ipynb_checkpoints/
+*-checkpoint.ipynb
+
+# --- Environment / secrets ---
+.env
+.env.*
+!.env.example
+*.key
+*.pem
+kaggle.json
+.kaggle/
+
+# --- Logs / temp ---
+*.log
+logs/
+tmp/
+temp/
+*.tmp
+scratchpad/
+
+# --- Model checkpoints (never tracked) ---
+*.pth
+*.pt
+*.ckpt
+*.onnx
+*.safetensors
+checkpoints/
+models/detection/*.pth
+models/detection/*.pt
+models/detection/*.ckpt
+
+# --- Datasets: never track raw or processed data ---
+data/raw/
+data/processed/
+*.h5
+*.hdf5
+*.tif
+*.tiff
+*.nc
+*.zarr
+# but keep folder markers so the layout is documented
+!data/raw/.gitkeep
+!data/processed/.gitkeep
+!data/processed/detection/.gitkeep
+
+# --- Generated bulk outputs ---
+outputs/detection/training/
+outputs/detection/predictions/
+outputs/detection/masks/
+outputs/detection/probability_maps/
+outputs/detection/overlays/
+outputs/detection/polygons/
+outputs/detection/reports/
+# Explicitly keep the Stage-1 verification artifacts (small JSON/CSV/TXT/PNG).
+!outputs/detection/data_verification/
+!outputs/detection/data_verification/**
+
+# --- OS / editor ---
+.DS_Store
+Thumbs.db
+.idea/
+.vscode/
+*.swp
+*.swo
+
+# --- Kaggle working directories ---
+kaggle_working/
+/kaggle/

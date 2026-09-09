@@ -1,0 +1,106 @@
+# LandslideGuard - Detection module configuration
+#
+# Values below are VERIFIED against the actual Landslide4Sense files during
+# Stage 1 (see notebooks/01_detection_development.ipynb and
+# outputs/detection/data_verification/). Training hyperparameters are left as
+# placeholders because Stage 2 (U-Net training) has not started.
+
+dataset:
+  name: Landslide4Sense
+  root: data/raw/landslide4sense
+  image_hdf5_key: img
+  mask_hdf5_key: mask
+  image_shape:  [128, 128, 14]      # (H, W, C) as stored on disk
+  mask_shape:   [128, 128]          # (H, W)
+  image_dtype: float64              # on-disk; cast to float32 in pipeline
+  mask_dtype:  uint8                # values {0, 1}
+  num_channels: 14
+  splits:
+    train:
+      img_dir:  data/raw/landslide4sense/TrainData/TrainData/img
+      mask_dir: data/raw/landslide4sense/TrainData/TrainData/mask
+      n_files: 3799
+    valid:
+      img_dir:  data/raw/landslide4sense/ValidData/ValidData/img
+      mask_dir: data/raw/landslide4sense/ValidData/ValidData/mask
+      n_files: 245
+    test:
+      img_dir:  data/raw/landslide4sense/TestData/TestData/img
+      mask_dir: data/raw/landslide4sense/TestData/TestData/mask
+      n_files: 800
+
+# Channel labels per Landslide4Sense (Ghorbanzadeh et al., 2022).
+# Kept as descriptive metadata; the pipeline does not depend on them for math.
+channels:
+  - {index:  0, name: B1_Coastal_aerosol,     source: Sentinel-2}
+  - {index:  1, name: B2_Blue,                source: Sentinel-2}
+  - {index:  2, name: B3_Green,               source: Sentinel-2}
+  - {index:  3, name: B4_Red,                 source: Sentinel-2}
+  - {index:  4, name: B5_RedEdge1,            source: Sentinel-2}
+  - {index:  5, name: B6_RedEdge2,            source: Sentinel-2}
+  - {index:  6, name: B7_RedEdge3,            source: Sentinel-2}
+  - {index:  7, name: B8_NIR,                 source: Sentinel-2}
+  - {index:  8, name: B8A_NarrowNIR,          source: Sentinel-2}
+  - {index:  9, name: B9_WaterVapor,          source: Sentinel-2}
+  - {index: 10, name: B10_Cirrus,             source: Sentinel-2}
+  - {index: 11, name: B11_SWIR1,              source: Sentinel-2}
+  - {index: 12, name: Slope,                  source: ALOS_PALSAR_DEM}
+  - {index: 13, name: DEM,                    source: ALOS_PALSAR}
+
+# Verification observed: no NaN, no Inf on training set; per-channel min == 0.0
+# exactly (see outputs/detection/data_verification/channel_statistics.csv).
+invalid_values:
+  observed_nan: 0
+  observed_inf: 0
+  policy: replace_with_zero_before_normalization  # defensive; not triggered
+
+normalization:
+  method: per_channel_zscore
+  computed_on: train_split_only
+  std_floor: 1.0e-6
+  nan_replacement: 0.0
+  statistics_file: outputs/detection/data_verification/normalization_statistics.json
+
+augmentation:
+  train_only: true
+  methods:
+    - horizontal_flip                   # p=0.5
+    - vertical_flip                     # p=0.5
+    - rot90                             # 0/1/2/3 quarter turns, uniform
+  photometric: none                     # channels are physical, not RGB
+
+pipeline:
+  image_tensor_layout: [B, C, H, W]     # C=14, H=128, W=128
+  mask_tensor_layout:  [B, H, W]
+  image_dtype: float32
+  mask_dtype:  float32                  # 0.0 / 1.0 for BCEWithLogitsLoss
+
+# ------- placeholders for future stages (NOT verified in Stage 1) -------
+model:
+  # name: unet
+  # in_channels: 14
+  # out_channels: 1
+  # base_features:
+
+training:
+  # epochs:
+  # batch_size:
+  # optimizer:
+  # learning_rate:
+  # weight_decay:
+  # loss:            # e.g. bce_dice
+  # device:
+  # seed:
+
+inference:
+  # checkpoint:
+  # threshold:
+
+output:
+  data_verification_dir: outputs/detection/data_verification
+  predictions_dir:       outputs/detection/predictions
+  masks_dir:             outputs/detection/masks
+  probability_maps_dir:  outputs/detection/probability_maps
+  overlays_dir:          outputs/detection/overlays
+  polygons_dir:          outputs/detection/polygons
+  reports_dir:           outputs/detection/reports

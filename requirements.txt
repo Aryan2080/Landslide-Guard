@@ -1,0 +1,39 @@
+# LandslideGuard - runtime dependencies.
+#
+# Deliberately unpinned so the file works both locally on CPU and on Kaggle
+# GPU (which ships a pre-installed CUDA-enabled PyTorch). Do NOT force a
+# specific torch version here: on Kaggle the base image already provides a
+# compatible torch build and reinstalling from PyPI would swap it for a CPU
+# wheel.
+
+# Core scientific stack
+numpy
+scipy
+pandas
+matplotlib
+
+# HDF5 access for Landslide4Sense patches
+h5py
+
+# Deep learning (present on Kaggle GPU images; listed for local use)
+torch
+torchvision
+
+# Image processing / augmentation
+scikit-image
+opencv-python-headless
+albumentations
+
+# Notebooks
+jupyter
+ipykernel
+nbconvert
+
+# Configuration and utilities
+pyyaml
+tqdm
+
+# Geospatial / GIS output (planned for later stages)
+rasterio
+shapely
+geopandas

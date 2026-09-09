@@ -1,0 +1,45 @@
+== Loading normalization stats (train-only) ==
+  [PASS] normalization stats loaded  mean.shape=(14,) std.shape=(14,)
+
+== Building datasets ==
+  [PASS] train split paired  images=3799 masks=3799 paired=3799
+  [PASS] valid split paired  images=245 masks=245 paired=245
+  [PASS] test split paired  images=800 masks=800 paired=800
+
+== Batch shape / dtype / finiteness ==
+  [PASS] train shape  x=(4, 14, 128, 128) y=(4, 128, 128)
+  [PASS] train dtype  x=torch.float32 y=torch.float32
+  [PASS] train finite  x_min=-2.066 x_max=+8.461
+  [PASS] train mask values in {0,1}  unique=[0.0, 1.0]
+  [PASS] valid shape  x=(4, 14, 128, 128) y=(4, 128, 128)
+  [PASS] valid dtype  x=torch.float32 y=torch.float32
+  [PASS] valid finite  x_min=-2.119 x_max=+18.616
+  [PASS] valid mask values in {0,1}  unique=[0.0, 1.0]
+  [PASS] test shape  x=(4, 14, 128, 128) y=(4, 128, 128)
+  [PASS] test dtype  x=torch.float32 y=torch.float32
+  [PASS] test finite  x_min=-2.183 x_max=+44.688
+  [PASS] test mask values in {0,1}  unique=[0.0, 1.0]
+
+== Augmentation is train-only ==
+  [PASS] train has augmenter  
+  [PASS] valid has no augmenter  
+  [PASS] test has no augmenter  
+
+== Augmentation preserves image/mask alignment ==
+  [PASS] augmented mask retains landslide pixel count  orig=405 aug=405
+  [PASS] augmented image tensor sum invariant (permutation)  orig_sum=166132.31 aug_sum=166132.31
+
+== Leakage checklist ==
+  [PASS] normalization computed_on == train_split_only  computed_on=train_split_only
+  [PASS] normalization file count matches train n_files  norm.n_train_files=3799 train.n_images=3799
+  [PASS] train/valid/test object identities distinct  
+  [PASS] validation has no augmenter  
+  [PASS] test has no augmenter  
+
+== Standardization sanity (loose bounds on a batch) ==
+  [PASS] per-channel mean within +/- 0.6 on 64-batch  max|mean|=0.248
+  [PASS] per-channel std within [0.2, 3.0] on 64-batch  min=0.754 max=1.113
+
+============================================================
+TOTAL CHECKS: 28  PASS: 28  FAIL: 0
+All Stage-1 verification checks passed.

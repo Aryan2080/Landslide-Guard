@@ -1,0 +1,49 @@
+{
+  "dataset": "Landslide4Sense",
+  "image_key": "img",
+  "mask_key": "mask",
+  "image_shape": [
+    128,
+    128,
+    14
+  ],
+  "mask_shape": [
+    128,
+    128
+  ],
+  "image_dtype": "float64",
+  "mask_dtype": "uint8",
+  "splits": {
+    "train": {
+      "n_files": 3799,
+      "img_dir": "data/raw/landslide4sense/TrainData/TrainData/img",
+      "mask_dir": "data/raw/landslide4sense/TrainData/TrainData/mask"
+    },
+    "valid": {
+      "n_files": 245,
+      "img_dir": "data/raw/landslide4sense/ValidData/ValidData/img",
+      "mask_dir": "data/raw/landslide4sense/ValidData/ValidData/mask"
+    },
+    "test": {
+      "n_files": 800,
+      "img_dir": "data/raw/landslide4sense/TestData/TestData/img",
+      "mask_dir": "data/raw/landslide4sense/TestData/TestData/mask"
+    }
+  },
+  "training_pixels_per_channel": [
+    62242816,
+    62242816,
+    62242816,
+    62242816,
+    62242816,
+    62242816,
+    62242816,
+    62242816,
+    62242816,
+    62242816,
+    62242816,
+    62242816,
+    62242816,
+    62242816
+  ]
+}
