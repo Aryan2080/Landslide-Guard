@@ -1,0 +1,10 @@
+{
+  "n_total": 800,
+  "n_no_gt": 264,
+  "n_has_gt": 536,
+  "n_good_dice_ge_0p5": 279,
+  "n_partial_0_dice_0p5": 138,
+  "n_missed_dice_eq_0": 119,
+  "n_over_no_gt_pred_gt_0": 76,
+  "mean_dice_over_positive_gt": 0.44597988723360876
+}

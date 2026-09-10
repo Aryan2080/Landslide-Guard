@@ -1,0 +1,26 @@
+{
+  "run_tag": "v2_cpu_20260910_092239",
+  "arch": {
+    "kind": "v2",
+    "in_channels": 14,
+    "out_channels": 1,
+    "base_features": 16,
+    "norm": "batchnorm",
+    "residual": false
+  },
+  "loss": "focal_dice",
+  "loss_params": "{\"name\": \"focal_dice\", \"gamma\": 2.0, \"alpha\": 0.25, \"focal_weight\": 0.5, \"dice_weight\": 0.5}",
+  "optimizer": "adamw",
+  "learning_rate": 0.001,
+  "weight_decay": 0.0001,
+  "scheduler": "cosine",
+  "batch_size": 16,
+  "seed": 42,
+  "checkpoint": "D:\\LANDSLIDE\\LandslideGuard\\checkpoints_v2\\v2_cpu_20260910_092239\\loss_focal_dice\\best_model.pth",
+  "threshold": 0.8,
+  "training_positive_pixel_ratio": 0.023180024502747434,
+  "selected_by": "val_dice (tiebreak val_iou, val_recall)",
+  "cpu_run": true,
+  "arch_protocol_epochs": 10,
+  "loss_protocol_epochs": 15
+}

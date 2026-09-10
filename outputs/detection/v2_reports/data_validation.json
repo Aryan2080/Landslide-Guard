@@ -1,0 +1,26 @@
+{
+  "train_size": 3799,
+  "valid_size": 245,
+  "test_size": 800,
+  "one_batch_shape_x": [
+    16,
+    14,
+    128,
+    128
+  ],
+  "one_batch_shape_y": [
+    16,
+    128,
+    128
+  ],
+  "one_batch_dtype": "torch.float32",
+  "one_batch_finite": true,
+  "one_batch_mask_unique": [
+    0.0,
+    1.0
+  ],
+  "one_batch_x_range": [
+    -6.565842151641846,
+    9.712474822998047
+  ]
+}

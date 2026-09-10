@@ -1,0 +1,18 @@
+# Detection V2 (CPU) - Phase 2 - Environment report
+generated: 2026-09-10T09:22:39.365674
+python           : 3.13.1
+platform         : Windows-11-10.0.26100-SP0
+torch            : 2.11.0+cpu
+cuda available   : False
+cuda version     : None
+cudnn enabled    : False
+cpu threads      : 12
+device summary   : cpu
+seed             : 42
+REPO_DIR         : D:\LANDSLIDE\LandslideGuard
+DATA_ROOT        : D:\LANDSLIDE\LandslideGuard\data\raw\landslide4sense
+WORK             : D:\LANDSLIDE\LandslideGuard
+BATCH_SIZE       : 16
+BASE_FEATURES    : 16
+ARCH_PROTOCOL    : {'seed': 42, 'epochs': 10, 'early_stop_patience': 6, 'lr': 0.001, 'weight_decay': 0.0001, 'grad_clip': 1.0, 'use_amp': False, 'select_by': 'val_dice', 'threshold_for_val_metrics': 0.5}
+LOSS_PROTOCOL    : {'seed': 42, 'epochs': 15, 'early_stop_patience': 8, 'lr': 0.001, 'weight_decay': 0.0001, 'grad_clip': 1.0, 'use_amp': False, 'select_by': 'val_dice', 'threshold_for_val_metrics': 0.5}

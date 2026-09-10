@@ -1,0 +1,26 @@
+run_tag: cpu_run_20260909_223053
+model:
+  name: unet
+  in_channels: 14
+  out_channels: 1
+  base_features: 16
+loss: baseline_bce_dice
+loss_params: '{"name": "bce_dice", "bce_weight": 0.5, "dice_weight": 0.5}'
+optimizer: adamw
+learning_rate: 0.001
+weight_decay: 0.0001
+scheduler: cosine
+batch_size: 16
+seed: 42
+normalization_stats_file: outputs/detection/data_verification/normalization_statistics.json
+augmentation:
+  train_only: true
+  methods:
+  - hflip
+  - vflip
+  - rot90
+checkpoint: D:\LANDSLIDE\LandslideGuard\checkpoints\detection\cpu_run_20260909_223053\baseline_bce_dice\best_model.pth
+threshold: 0.6
+training_positive_pixel_ratio: 0.023180024502747434
+selected_by: val_dice (tiebreak val_iou, val_recall)
+notes: CPU-adapted Stage-2 run; smaller U-Net (base_features=16)

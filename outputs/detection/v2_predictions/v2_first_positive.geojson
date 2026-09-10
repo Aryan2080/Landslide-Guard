@@ -1,0 +1,201 @@
+{
+  "type": "FeatureCollection",
+  "features": [
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              82.0,
+              74.0
+            ],
+            [
+              114.0,
+              74.0
+            ],
+            [
+              114.0,
+              89.0
+            ],
+            [
+              82.0,
+              89.0
+            ],
+            [
+              82.0,
+              74.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "detection_id": 1,
+        "centroid_x": 99.01951219512195,
+        "centroid_y": 79.70243902439024,
+        "area_px": 205,
+        "confidence": 0.9806615114212036,
+        "crs": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              120.0,
+              77.0
+            ],
+            [
+              128.0,
+              77.0
+            ],
+            [
+              128.0,
+              85.0
+            ],
+            [
+              120.0,
+              85.0
+            ],
+            [
+              120.0,
+              77.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "detection_id": 2,
+        "centroid_x": 123.53846153846153,
+        "centroid_y": 80.38461538461539,
+        "area_px": 52,
+        "confidence": 0.9847421050071716,
+        "crs": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              72.0,
+              88.0
+            ],
+            [
+              76.0,
+              88.0
+            ],
+            [
+              76.0,
+              94.0
+            ],
+            [
+              72.0,
+              94.0
+            ],
+            [
+              72.0,
+              88.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "detection_id": 3,
+        "centroid_x": 73.42105263157895,
+        "centroid_y": 90.26315789473684,
+        "area_px": 19,
+        "confidence": 0.9755005836486816,
+        "crs": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              121.0,
+              92.0
+            ],
+            [
+              128.0,
+              92.0
+            ],
+            [
+              128.0,
+              100.0
+            ],
+            [
+              121.0,
+              100.0
+            ],
+            [
+              121.0,
+              92.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "detection_id": 4,
+        "centroid_x": 124.34,
+        "centroid_y": 95.28,
+        "area_px": 50,
+        "confidence": 0.9853773713111877,
+        "crs": "pixel"
+      }
+    },
+    {
+      "type": "Feature",
+      "geometry": {
+        "type": "Polygon",
+        "coordinates": [
+          [
+            [
+              32.0,
+              105.0
+            ],
+            [
+              41.0,
+              105.0
+            ],
+            [
+              41.0,
+              109.0
+            ],
+            [
+              32.0,
+              109.0
+            ],
+            [
+              32.0,
+              105.0
+            ]
+          ]
+        ]
+      },
+      "properties": {
+        "detection_id": 5,
+        "centroid_x": 36.82608695652174,
+        "centroid_y": 106.91304347826087,
+        "area_px": 23,
+        "confidence": 0.9494276642799377,
+        "crs": "pixel"
+      }
+    }
+  ],
+  "properties": {
+    "connectivity": 2,
+    "min_area_px": 8,
+    "dropped_below_min_area": 3,
+    "notes": "Landslide4Sense HDF5 files carry no CRS/affine; coordinates are pixel-space. Downstream Monitoring can transform via a supplied CRS+affine."
+  }
+}
